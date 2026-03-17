@@ -7,6 +7,15 @@
     <meta name="description" content="{% block meta_description %}Praktické webové kalkulačky pro finance, mzdy, hypotéky a rodinné dávky v Česku.{% endblock %}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% if google_analytics_id %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag("js", new Date());
+            gtag("config", "{{ google_analytics_id }}");
+        </script>
+    {% endif %}
     {% block head_extra %}{% endblock %}
 </head>
 <body>

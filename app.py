@@ -40,6 +40,13 @@ PROJECT_INFO = {
 }
 
 
+@app.context_processor
+def inject_global_template_context():
+    return {
+        "google_analytics_id": os.environ.get("GOOGLE_ANALYTICS_ID", "").strip(),
+    }
+
+
 @app.route("/")
 def index():
     logger.info("Render index page")

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from app import app
 
@@ -29,6 +30,15 @@ class RouteSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {"status": "ok"})
+
+    def test_google_analytics_script_is_rendered_when_measurement_id_is_set(self):
+        with patch.dict("os.environ", {"GOOGLE_ANALYTICS_ID": "G-TEST123456"}, clear=False):
+            response = self.client.get("/")
+
+        html = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("googletagmanager.com/gtag/js?id=G-TEST123456", html)
+        self.assertIn('gtag("config", "G-TEST123456")', html)
 
     def test_calculator_posts_render_successfully_with_defaults(self):
         routes_with_payloads = {

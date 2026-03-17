@@ -79,6 +79,18 @@ Postup:
 5. Po prvním deployi otevři `/health` a zkontroluj, že vrací `{"status":"ok"}`.
 6. Potom otevři hlavní stránku webu a zkus alespoň jednu kalkulačku.
 
+## Google Analytics 4
+
+Google Analytics se načte automaticky, pokud nastavíš proměnnou prostředí `GOOGLE_ANALYTICS_ID`.
+
+Postup:
+1. V Google Analytics 4 vytvoř webový datový stream.
+2. Zkopíruj své měřicí ID ve tvaru `G-XXXXXXXXXX`.
+3. Na Renderu otevři službu `webove-kalkulacky`.
+4. Jdi do `Environment`.
+5. Přidej proměnnou `GOOGLE_ANALYTICS_ID` s hodnotou svého měřicího ID.
+6. Ulož změnu a spusť redeploy.
+
 ## Důležitá poznámka
 
 Výsledky kalkulaček jsou orientační. U mezd, dávek a dalších právně citlivých oblastí vždy záleží na konkrétní situaci a aktuálně platných pravidlech.
