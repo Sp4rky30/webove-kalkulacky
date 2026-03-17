@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Rozcestník kalkulaček{% endblock %}
+
+{% block body %}
+    <div class="container landing-container">
+        <div class="top-bar">
+            <div class="top-links">
+                <a class="top-link" href="{{ url_for('about') }}">O projektu</a>
+            </div>
+            <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Tmavý režim</button>
+        </div>
+
+        <div class="landing-hero">
+            <p class="eyebrow">Webové kalkulačky</p>
+            <h1>Vyber si kalkulačku, se kterou chceš pokračovat</h1>
+            <p class="subtitle landing-subtitle">
+                Přehled praktických kalkulaček pro finance, mzdy, bydlení a rodinné dávky na jednom místě.
+            </p>
+        </div>
+
+        <div class="calculator-grid">
+            {% for calculator in calculators %}
+                <article class="calculator-card">
+                    <div class="calculator-card-top">
+                        <span class="calculator-status">{{ calculator.status }}</span>
+                        <span class="calculator-category">{{ calculator.category }}</span>
+                        <h2>{{ calculator.name }}</h2>
+                    </div>
+
+                    <p>{{ calculator.description }}</p>
+
+                    <div class="calculator-tags">
+                        {% for tag in calculator.tags %}
+                            <span class="calculator-tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+
+                    {% if calculator.href %}
+                        <a class="calculator-link" href="{{ url_for(calculator.href) }}">Otevřít kalkulačku</a>
+                    {% else %}
+                        <span class="calculator-link calculator-link-disabled">Připravujeme</span>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

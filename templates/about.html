@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}O projektu{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>O projektu</h1>
+            </div>
+            <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Tmavý režim</button>
+        </div>
+
+        <div class="card about-card">
+            <p class="eyebrow">Webové kalkulačky</p>
+            <h2>{{ project.title }}</h2>
+            <p class="subtitle">{{ project.intro }}</p>
+
+            <div class="result-block">
+                <h3>Co je cílem projektu</h3>
+                <ul class="info-list">
+                    {% for goal in project.goals %}
+                        <li>{{ goal }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="result-block">
+                <h3>Co na webu najdeš teď</h3>
+                <div class="calculator-grid">
+                    {% for calculator in calculators %}
+                        <article class="calculator-card">
+                            <div class="calculator-card-top">
+                                <span class="calculator-status">{{ calculator.status }}</span>
+                                <span class="calculator-category">{{ calculator.category }}</span>
+                                <h2>{{ calculator.name }}</h2>
+                            </div>
+                            <p>{{ calculator.description }}</p>
+                            <div class="calculator-tags">
+                                {% for tag in calculator.tags %}
+                                    <span class="calculator-tag">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                            <a class="calculator-link" href="{{ url_for(calculator.href) }}">Otevřít kalkulačku</a>
+                        </article>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <p class="footer-note">{{ project.disclaimer }}</p>
+        </div>
+    </div>
+{% endblock %}

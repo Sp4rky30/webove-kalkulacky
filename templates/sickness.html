@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Kalkulačka nemocenské{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>Kalkulačka nemocenské</h1>
+            </div>
+            <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Tmavý režim</button>
+        </div>
+
+        <p class="subtitle">
+            Orientační výpočet nemocenské dávky od 15. dne pracovní neschopnosti podle hrubé mzdy a délky neschopenky.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Vstupní parametry</h2>
+                <form method="post">
+                    <label for="gross_salary">Hrubá měsíční mzda (Kč)</label>
+                    <input type="number" id="gross_salary" name="gross_salary" min="0" step="100" value="{{ gross_salary }}">
+
+                    <label for="sick_days">Celkový počet kalendářních dní neschopenky</label>
+                    <input type="number" id="sick_days" name="sick_days" min="15" max="365" step="1" value="{{ sick_days }}">
+
+                    <button type="submit" class="submit-button">Spočítat nemocenskou</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header-row">
+                    <h2>Výsledek</h2>
+                    <span class="calculator-status">Nemocenské 2026</span>
+                </div>
+
+                <div class="summary summary-four">
+                    {% for card in summary_cards %}
+                        <div class="summary-item">
+                            <small>{{ card.label }}</small>
+                            <strong>{{ card.value }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-block">
+                        <h3>Základ výpočtu</h3>
+                        <table>
+                            <tbody>
+                                {% for row in breakdown_rows %}
+                                    <tr>
+                                        <td>{{ row.label }}</td>
+                                        <td>{{ row.value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="result-block">
+                        <h3>Po obdobích</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Období</th>
+                                    <th>Počet dní</th>
+                                    <th>Sazba</th>
+                                    <th>Dávka</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in period_rows %}
+                                    <tr>
+                                        <td>{{ row.label }}</td>
+                                        <td>{{ row.days }}</td>
+                                        <td>{{ row.rate }}</td>
+                                        <td>{{ row.value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% for note in notes %}
+                    <p class="footer-note">{{ note }}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

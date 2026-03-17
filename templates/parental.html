@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}Kalkulačka rodičovské{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>Kalkulačka rodičovské</h1>
+            </div>
+            <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Tmavý režim</button>
+        </div>
+
+        <p class="subtitle">
+            Orientační výpočet rodičovského příspěvku podle období narození dítěte, možnosti stanovit DVZ a zvolené měsíční částky.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Vstupní parametry</h2>
+                <form method="post" class="stacked-form">
+                    <div class="form-section">
+                        <label for="birth_period">Období narození dítěte</label>
+                        <select id="birth_period" name="birth_period" class="select-input">
+                            {% for value, label in birth_period_options %}
+                                <option value="{{ value }}" {% if birth_period == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label for="gross_salary">Hrubá měsíční mzda pro odhad DVZ (Kč)</label>
+                        <input type="number" id="gross_salary" name="gross_salary" min="0" step="100" value="{{ gross_salary }}">
+                    </div>
+
+                    <div class="form-section form-section-soft">
+                        <label class="check-row">
+                            <input type="checkbox" name="multiple_children" {% if multiple_children %}checked{% endif %}>
+                            <span>Vícerčata / více dětí narozených zároveň</span>
+                        </label>
+
+                        <label class="check-row check-row-last">
+                            <input type="checkbox" name="has_dvz" {% if has_dvz %}checked{% endif %}>
+                            <span>Lze stanovit denní vyměřovací základ</span>
+                        </label>
+                    </div>
+
+                    <div class="form-section form-section-soft">
+                        <label>Způsob výpočtu</label>
+                        <label class="check-row mode-row">
+                            <input type="radio" name="calculation_mode" value="monthly_amount" {% if calculation_mode == "monthly_amount" %}checked{% endif %}>
+                            <span>Chci zadat měsíční částku</span>
+                        </label>
+                        <label class="check-row mode-row check-row-last">
+                            <input type="radio" name="calculation_mode" value="duration_months" {% if calculation_mode == "duration_months" %}checked{% endif %}>
+                            <span>Chci zadat délku čerpání</span>
+                        </label>
+                    </div>
+
+                    <div id="monthlyAmountField" class="form-section form-section-soft">
+                        <label for="desired_monthly_draw">Požadovaná měsíční částka (Kč)</label>
+                        <input type="number" id="desired_monthly_draw" name="desired_monthly_draw" min="0" step="100" value="{{ desired_monthly_draw }}">
+                    </div>
+
+                    <div id="durationField" class="form-section form-section-soft">
+                        <label for="desired_months">Požadovaná délka čerpání (měsíce)</label>
+                        <input type="number" id="desired_months" name="desired_months" min="1" step="1" value="{{ desired_months }}">
+                    </div>
+
+                    <button type="submit" class="submit-button">Spočítat rodičovskou</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header-row">
+                    <h2>Výsledek</h2>
+                    <span class="calculator-status">RP 2026</span>
+                </div>
+
+                <div class="summary summary-four">
+                    {% for card in summary_cards %}
+                        <div class="summary-item">
+                            <small>{{ card.label }}</small>
+                            <strong>{{ card.value }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="result-block">
+                    <h3>Rozpad výpočtu</h3>
+                    <table>
+                        <tbody>
+                            {% for row in breakdown_rows %}
+                                <tr>
+                                    <td>{{ row.label }}</td>
+                                    <td>{{ row.value }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% for note in notes %}
+                    <p class="footer-note">{{ note }}</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const monthlyAmountField = document.getElementById("monthlyAmountField");
+        const durationField = document.getElementById("durationField");
+        function updateCalculationMode() {
+            const selected = document.querySelector('input[name="calculation_mode"]:checked')?.value;
+            monthlyAmountField.style.display = selected === "monthly_amount" ? "block" : "none";
+            durationField.style.display = selected === "duration_months" ? "block" : "none";
+        }
+        document.querySelectorAll('input[name="calculation_mode"]').forEach((input) => {
+            input.addEventListener("change", updateCalculationMode);
+        });
+        updateCalculationMode();
+    </script>
+{% endblock %}

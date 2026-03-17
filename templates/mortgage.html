@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Kalkulačka hypotéky{% endblock %}
+
+{% block head_extra %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>Kalkulačka hypotéky</h1>
+            </div>
+
+            <button
+                type="button"
+                class="theme-toggle"
+                id="themeToggle"
+                onclick="toggleTheme()"
+            >
+                🌙 Tmavý režim
+            </button>
+        </div>
+
+        <p class="subtitle">
+            Spočítej orientační měsíční splátku hypotéky, výši úvěru, celkové přeplacení a průběh splácení.
+            Kalkulačka počítá anuitní splácení a ukáže ti také vývoj zbývající jistiny a zaplacených úroků v čase.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Vstupní parametry</h2>
+
+                <form method="post">
+                    <label for="property_price">Cena nemovitosti (Kč)</label>
+                    <input
+                        type="number"
+                        id="property_price"
+                        name="property_price"
+                        min="0"
+                        step="10000"
+                        value="{{ property_price }}"
+                    >
+
+                    <label for="own_resources">Vlastní zdroje (Kč)</label>
+                    <input
+                        type="number"
+                        id="own_resources"
+                        name="own_resources"
+                        min="0"
+                        step="10000"
+                        value="{{ own_resources }}"
+                    >
+
+                    <label for="interest_rate">Roční úrok (%)</label>
+                    <input
+                        type="number"
+                        id="interest_rate"
+                        name="interest_rate"
+                        min="0"
+                        step="0.1"
+                        value="{{ interest_rate }}"
+                    >
+
+                    <label for="years">Doba splácení (roky)</label>
+                    <input
+                        type="number"
+                        id="years"
+                        name="years"
+                        min="1"
+                        max="40"
+                        step="1"
+                        value="{{ years }}"
+                    >
+
+                    <button type="submit" class="submit-button">Spočítat hypotéku</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header-row">
+                    <h2>Výsledek</h2>
+                    <span class="calculator-status">Anuitní splácení</span>
+                </div>
+
+                <div class="summary summary-four">
+                    {% for card in summary_cards %}
+                        <div class="summary-item">
+                            <small>{{ card.label }}</small>
+                            <strong>{{ card.value }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="chart-wrapper">
+                    <canvas id="mortgageChart"></canvas>
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-block">
+                        <h3>Parametry úvěru</h3>
+                        <table>
+                            <tbody>
+                                {% for row in breakdown_rows %}
+                                    <tr>
+                                        <td>{{ row.label }}</td>
+                                        <td>{{ row.value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="result-block">
+                        <h3>Rychlý přehled</h3>
+                        <ul class="info-list">
+                            <li>Výše hypotéky: {{ mortgage_result.loan_amount }}</li>
+                            <li>Měsíční splátka: {{ mortgage_result.monthly_payment }}</li>
+                            <li>Celkové přeplacení na úrocích: {{ mortgage_result.total_interest }}</li>
+                            <li>Celkem zaplaceno bance: {{ mortgage_result.total_paid }}</li>
+                            <li>Efektivní délka splácení: {{ mortgage_result.actual_years }} roku</li>
+                        </ul>
+                    </div>
+                </div>
+
+                {% if notes %}
+                    {% for note in notes %}
+                        <p class="footer-note">{{ note }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Milníky splácení</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Po kolika letech</th>
+                            <th>Zbývající jistina</th>
+                            <th>Celkem zaplaceno</th>
+                            <th>Zaplacené úroky</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in milestone_rows %}
+                            <tr>
+                                <td>{{ row.label }}</td>
+                                <td>{{ row.remaining_balance }}</td>
+                                <td>{{ row.paid_total }}</td>
+                                <td>{{ row.interest_total }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const mortgageChartData = {
+            labels: {{ chart_labels | tojson }},
+            balances: {{ chart_balances | tojson }},
+            interestPaid: {{ chart_interest_paid | tojson }}
+        };
+
+        const mortgageChartCanvas = document.getElementById("mortgageChart");
+
+        const chartBackgroundPlugin = {
+            id: "chartBackgroundPlugin",
+            beforeDraw(chart) {
+                const { ctx, canvas } = chart;
+                const background = getComputedStyle(document.body).getPropertyValue("--card").trim() || "#ffffff";
+
+                ctx.save();
+                ctx.globalCompositeOperation = "destination-over";
+                ctx.fillStyle = background;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+        };
+
+        const mortgageChart = new Chart(mortgageChartCanvas, {
+            type: "line",
+            data: {
+                labels: mortgageChartData.labels,
+                datasets: [
+                    {
+                        label: "Zbývající jistina",
+                        data: mortgageChartData.balances,
+                        borderColor: "#2563eb",
+                        backgroundColor: "#2563eb",
+                        borderWidth: 3,
+                        tension: 0.25
+                    },
+                    {
+                        label: "Zaplacené úroky",
+                        data: mortgageChartData.interestPaid,
+                        borderColor: "#f59e0b",
+                        backgroundColor: "#f59e0b",
+                        borderWidth: 3,
+                        tension: 0.25
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#1f2937"
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#4b5563"
+                        },
+                        grid: {
+                            color: "#e5e7eb"
+                        },
+                        title: {
+                            display: true,
+                            color: "#1f2937",
+                            text: "Rok splácení"
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#4b5563",
+                            callback(value) {
+                                return new Intl.NumberFormat("cs-CZ").format(value) + " Kč";
+                            }
+                        },
+                        grid: {
+                            color: "#e5e7eb"
+                        },
+                        title: {
+                            display: true,
+                            color: "#1f2937",
+                            text: "Částka"
+                        }
+                    }
+                }
+            },
+            plugins: [chartBackgroundPlugin]
+        });
+
+        function syncMortgageChartTheme() {
+            const styles = getComputedStyle(document.body);
+            const textColor = styles.getPropertyValue("--text").trim() || "#1f2937";
+            const mutedColor = styles.getPropertyValue("--muted").trim() || "#4b5563";
+            const borderColor = styles.getPropertyValue("--border").trim() || "#e5e7eb";
+
+            mortgageChart.options.plugins.legend.labels.color = textColor;
+            mortgageChart.options.scales.x.ticks.color = mutedColor;
+            mortgageChart.options.scales.x.title.color = textColor;
+            mortgageChart.options.scales.x.grid.color = borderColor;
+            mortgageChart.options.scales.y.ticks.color = mutedColor;
+            mortgageChart.options.scales.y.title.color = textColor;
+            mortgageChart.options.scales.y.grid.color = borderColor;
+            mortgageChart.update();
+        }
+
+        syncMortgageChartTheme();
+        document.addEventListener("themechange", syncMortgageChartTheme);
+    </script>
+{% endblock %}

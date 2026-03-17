@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Kalkulačka složeného úročení{% endblock %}
+
+{% block head_extra %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>Kalkulačka složeného úročení</h1>
+            </div>
+
+            <button
+                type="button"
+                class="theme-toggle"
+                id="themeToggle"
+                onclick="toggleTheme()"
+            >
+                🌙 Tmavý režim
+            </button>
+        </div>
+
+        <p class="subtitle">
+            Zadej začáteční vklad, roční úrok, měsíční vklad, inflaci a počet let.
+            Aplikace zobrazí vývoj investice, zisk, reálnou hodnotu po inflaci,
+            graf i přehled po 5 letech až do zvoleného horizontu.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Vstupní parametry</h2>
+
+                <form method="post">
+                    <label for="initial_deposit">Začáteční vklad (Kč)</label>
+                    <input
+                        type="number"
+                        id="initial_deposit"
+                        name="initial_deposit"
+                        min="0"
+                        step="1000"
+                        value="{{ initial_deposit }}"
+                    >
+
+                    <label for="annual_rate">Roční úrok (%)</label>
+                    <input
+                        type="number"
+                        id="annual_rate"
+                        name="annual_rate"
+                        min="0"
+                        step="0.1"
+                        value="{{ annual_rate }}"
+                    >
+
+                    <label for="monthly_deposit">Měsíční vklad (Kč)</label>
+                    <input
+                        type="number"
+                        id="monthly_deposit"
+                        name="monthly_deposit"
+                        min="0"
+                        step="500"
+                        value="{{ monthly_deposit }}"
+                    >
+
+                    <label for="inflation_rate">Inflace (%)</label>
+                    <input
+                        type="number"
+                        id="inflation_rate"
+                        name="inflation_rate"
+                        min="0"
+                        step="0.1"
+                        value="{{ inflation_rate }}"
+                    >
+
+                    <div class="slider-header">
+                        <label for="years">Počet let</label>
+                        <span id="yearsValue">{{ years }}</span>
+                    </div>
+
+                    <input
+                        class="slider"
+                        type="range"
+                        id="years"
+                        name="years"
+                        min="1"
+                        max="100"
+                        step="1"
+                        value="{{ years }}"
+                        oninput="document.getElementById('yearsValue').textContent = this.value"
+                    >
+
+                    <button type="submit" class="submit-button">Přepočítat</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header-row">
+                    <h2>Vývoj investice</h2>
+
+                    <div class="export-actions">
+                        <a
+                            class="export-button"
+                            href="{{ url_for('export_csv', initial_deposit=initial_deposit, annual_rate=annual_rate, monthly_deposit=monthly_deposit, inflation_rate=inflation_rate, years=years) }}"
+                        >
+                            Export CSV
+                        </a>
+                        <a
+                            class="export-button"
+                            href="{{ url_for('export_pdf', initial_deposit=initial_deposit, annual_rate=annual_rate, monthly_deposit=monthly_deposit, inflation_rate=inflation_rate, years=years) }}"
+                        >
+                            Export PDF
+                        </a>
+                        <button type="button" class="export-button chart-download-button" id="downloadChartButton">
+                            Stáhnout graf
+                        </button>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper">
+                    <canvas id="investmentChart"></canvas>
+                </div>
+
+                <div class="summary summary-four">
+                    <div class="summary-item">
+                        <small>Celkem vloženo po {{ years }} letech</small>
+                        <strong>{{ summary.deposits }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <small>Celková hodnota po {{ years }} letech</small>
+                        <strong>{{ summary.total }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <small>Zisk</small>
+                        <strong>{{ summary.profit }}</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <small>Reálná hodnota po inflaci</small>
+                        <strong>{{ summary.real_total }}</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Přehled po 5 letech až do zvoleného horizontu</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Počet let</th>
+                            <th>Celkem vloženo</th>
+                            <th>Celková hodnota</th>
+                            <th>Zisk</th>
+                            <th>Reálná hodnota</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in milestones %}
+                            <tr>
+                                <td>{{ row.year }} let</td>
+                                <td>{{ row.deposits }}</td>
+                                <td>{{ row.total }}</td>
+                                <td>{{ row.profit }}</td>
+                                <td>{{ row.real_total }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="footer-note">
+                Výpočet předpokládá měsíční připisování úroku a měsíční vklad na konci každého měsíce.
+            </p>
+            <p class="footer-note">
+                Reálná hodnota je přepočtená o zadanou inflaci.
+            </p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const chartData = {
+            labels: {{ chart_labels | tojson }},
+            deposits: {{ chart_deposits | tojson }},
+            total: {{ chart_total | tojson }},
+            profit: {{ chart_profit | tojson }},
+            realTotal: {{ chart_real_total | tojson }}
+        };
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat("cs-CZ", {
+                style: "currency",
+                currency: "CZK",
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        const chartCanvas = document.getElementById("investmentChart");
+        const downloadChartButton = document.getElementById("downloadChartButton");
+
+        const chartBackgroundPlugin = {
+            id: "chartBackgroundPlugin",
+            beforeDraw(chart) {
+                const { ctx, canvas } = chart;
+                const background = getComputedStyle(document.body).getPropertyValue("--card").trim() || "#ffffff";
+
+                ctx.save();
+                ctx.globalCompositeOperation = "destination-over";
+                ctx.fillStyle = background;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            }
+        };
+
+        function syncChartTheme() {
+            if (!window.investmentChart) {
+                return;
+            }
+
+            const styles = getComputedStyle(document.body);
+            const textColor = styles.getPropertyValue("--text").trim() || "#1f2937";
+            const mutedColor = styles.getPropertyValue("--muted").trim() || "#4b5563";
+            const borderColor = styles.getPropertyValue("--border").trim() || "#e5e7eb";
+
+            investmentChart.options.plugins.legend.labels.color = textColor;
+            investmentChart.options.scales.x.ticks.color = mutedColor;
+            investmentChart.options.scales.x.title.color = textColor;
+            investmentChart.options.scales.x.grid.color = borderColor;
+            investmentChart.options.scales.y.ticks.color = mutedColor;
+            investmentChart.options.scales.y.title.color = textColor;
+            investmentChart.options.scales.y.grid.color = borderColor;
+            investmentChart.update();
+        }
+
+        const investmentChart = new Chart(chartCanvas, {
+            type: "line",
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: "Vklady",
+                        data: chartData.deposits,
+                        borderColor: "#3b82f6",
+                        backgroundColor: "#3b82f6",
+                        borderWidth: 3,
+                        tension: 0.25
+                    },
+                    {
+                        label: "Celková hodnota",
+                        data: chartData.total,
+                        borderColor: "#f43f5e",
+                        backgroundColor: "#f43f5e",
+                        borderWidth: 3,
+                        tension: 0.25
+                    },
+                    {
+                        label: "Zisk",
+                        data: chartData.profit,
+                        borderColor: "#f59e0b",
+                        backgroundColor: "#f59e0b",
+                        borderWidth: 3,
+                        tension: 0.25
+                    },
+                    {
+                        label: "Reálná hodnota",
+                        data: chartData.realTotal,
+                        borderColor: "#8b5cf6",
+                        backgroundColor: "#8b5cf6",
+                        borderWidth: 3,
+                        tension: 0.25
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: "index",
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#1f2937"
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label(context) {
+                                return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            color: "#4b5563"
+                        },
+                        grid: {
+                            color: "#e5e7eb"
+                        },
+                        title: {
+                            display: true,
+                            color: "#1f2937",
+                            text: "Čas (roky)"
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: "#4b5563",
+                            callback(value) {
+                                return formatCurrency(value);
+                            }
+                        },
+                        grid: {
+                            color: "#e5e7eb"
+                        },
+                        title: {
+                            display: true,
+                            color: "#1f2937",
+                            text: "Peníze celkem (Kč)"
+                        }
+                    }
+                }
+            },
+            plugins: [chartBackgroundPlugin]
+        });
+
+        downloadChartButton.addEventListener("click", () => {
+            investmentChart.update();
+
+            const link = document.createElement("a");
+            link.href = chartCanvas.toDataURL("image/png");
+            link.download = "graf-slozene-uroceni.png";
+            link.click();
+        });
+
+        syncChartTheme();
+        document.addEventListener("themechange", syncChartTheme);
+    </script>
+{% endblock %}

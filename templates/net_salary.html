@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Kalkulačka čisté mzdy v ČR{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>Kalkulačka čisté mzdy v ČR</h1>
+            </div>
+
+            <button
+                type="button"
+                class="theme-toggle"
+                id="themeToggle"
+                onclick="toggleTheme()"
+            >
+                🌙 Tmavý režim
+            </button>
+        </div>
+
+        <p class="subtitle">
+            Výpočet je připravený pro měsíční mzdu v roce 2026. Počítá pracovní poměr i dohody, daň, děti,
+            ZTP/P, invaliditu a minimum zdravotního pojištění podle zadaných vstupů.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Vstupní parametry</h2>
+
+                <form method="post" id="netSalaryForm" class="stacked-form">
+                    <div class="form-section">
+                        <label for="gross_salary">Hrubá měsíční mzda (Kč)</label>
+                        <input
+                            type="number"
+                            id="gross_salary"
+                            name="gross_salary"
+                            min="0"
+                            step="100"
+                            value="{{ gross_salary }}"
+                        >
+
+                        <label for="employment_type">Typ pracovního vztahu</label>
+                        <select id="employment_type" name="employment_type" class="select-input">
+                            {% for value, label in employment_type_options %}
+                                <option value="{{ value }}" {% if employment_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <label for="invalidity_level">Invalidita</label>
+                        <select id="invalidity_level" name="invalidity_level" class="select-input">
+                            <option value="none" {% if invalidity_level == "none" %}selected{% endif %}>Bez invalidity</option>
+                            <option value="1_2" {% if invalidity_level == "1_2" %}selected{% endif %}>I. nebo II. stupeň</option>
+                            <option value="3" {% if invalidity_level == "3" %}selected{% endif %}>III. stupeň</option>
+                        </select>
+
+                        <label for="health_exemption_reason">Výjimka z minima zdravotního pojištění</label>
+                        <select id="health_exemption_reason" name="health_exemption_reason" class="select-input">
+                            {% for value, label in health_exemption_options %}
+                                <option value="{{ value }}" {% if health_exemption_reason == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-section form-section-soft">
+                        <label class="check-row">
+                            <input type="checkbox" name="signed_tax_declaration" {% if signed_tax_declaration %}checked{% endif %}>
+                            <span>Podepsané Prohlášení k dani</span>
+                        </label>
+
+                        <label class="check-row">
+                            <input type="checkbox" name="taxpayer_ztp" {% if taxpayer_ztp %}checked{% endif %}>
+                            <span>Poplatník je držitel průkazu ZTP/P</span>
+                        </label>
+
+                        <label class="check-row check-row-last">
+                            <input type="checkbox" name="student" {% if student %}checked{% endif %}>
+                            <span>Student / soustavná příprava</span>
+                        </label>
+                    </div>
+
+                    <div class="children-builder form-section form-section-soft">
+                        <div class="children-header">
+                            <label>Děti pro daňové zvýhodnění</label>
+                            <button type="button" class="secondary-button" id="addChildButton">Přidat dítě</button>
+                        </div>
+
+                        <div id="childrenList" class="children-list"></div>
+                    </div>
+
+                    <button type="submit" class="submit-button">Spočítat čistou mzdu</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-header-row">
+                    <h2>Výsledek</h2>
+                    <span class="calculator-status">Rok 2026</span>
+                </div>
+
+                <div class="summary summary-four">
+                    {% for card in summary_cards %}
+                        <div class="summary-item">
+                            <small>{{ card.label }}</small>
+                            <strong>{{ card.value }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-block">
+                        <h3>Rozpad výpočtu</h3>
+                        <table>
+                            <tbody>
+                                {% for row in breakdown_rows %}
+                                    <tr>
+                                        <td>{{ row.label }}</td>
+                                        <td>{{ row.value }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="result-block">
+                        <h3>Detaily daně a odvodů</h3>
+                        <ul class="info-list">
+                            <li>Daňový základ po zaokrouhlení: {{ net_salary_result.tax_base }}</li>
+                            <li>Sociální pojištění zaměstnance: {{ net_salary_result.social_rate }}</li>
+                            <li>Zdravotní pojištění zaměstnance: {{ net_salary_result.health_rate }}</li>
+                            <li>Daň před slevami: {{ net_salary_result.pre_credit_tax }}</li>
+                            <li>Daň po slevách: {{ net_salary_result.final_tax }}</li>
+                            <li>Daňový bonus na děti: {{ net_salary_result.tax_bonus }}</li>
+                            {% if meta.minimum_health_applies %}
+                                <li>Doplatek do minima zdravotního pojištění: {{ net_salary_result.health_minimum_top_up }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                {% if credit_items %}
+                    <div class="result-block">
+                        <h3>Uplatněné slevy na dani</h3>
+                        <ul class="info-list">
+                            {% for item in credit_items %}
+                                <li>{{ item.label }}: {{ item.value }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {% if child_credit_items %}
+                    <div class="result-block">
+                        <h3>Daňové zvýhodnění na děti</h3>
+                        <ul class="info-list">
+                            {% for item in child_credit_items %}
+                                <li>{{ item.label }}: {{ item.value }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {% if meta.student_note %}
+                    <p class="footer-note">{{ meta.student_note }}</p>
+                {% endif %}
+
+                {% if meta.assumption_notes %}
+                    {% for note in meta.assumption_notes %}
+                        <p class="footer-note">{{ note }}</p>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const initialChildren = {{ children | map(attribute='type') | list | tojson }};
+        const childrenList = document.getElementById("childrenList");
+        const addChildButton = document.getElementById("addChildButton");
+
+        function createChildRow(value = "normal") {
+            const row = document.createElement("div");
+            row.className = "child-row";
+            row.innerHTML = `
+                <select name="child_type" class="select-input child-select">
+                    <option value="normal">Dítě</option>
+                    <option value="ztp">Dítě se ZTP/P</option>
+                </select>
+                <button type="button" class="secondary-button remove-child-button">Odebrat</button>
+            `;
+
+            row.querySelector("select").value = value;
+            row.querySelector(".remove-child-button").addEventListener("click", () => row.remove());
+            childrenList.appendChild(row);
+        }
+
+        addChildButton.addEventListener("click", () => createChildRow());
+
+        if (initialChildren.length) {
+            initialChildren.forEach((childType) => createChildRow(childType));
+        }
+    </script>
+{% endblock %}

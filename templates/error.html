@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ status_code }} | {{ title }}{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="top-bar">
+            <div>
+                <a class="back-link" href="{{ url_for('index') }}">← Zpět na rozcestník</a>
+                <h1>{{ title }}</h1>
+            </div>
+            <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙 Tmavý režim</button>
+        </div>
+
+        <div class="card error-card">
+            <p class="eyebrow">Chyba {{ status_code }}</p>
+            <h2>{{ title }}</h2>
+            <p class="subtitle">{{ message }}</p>
+            <a class="calculator-link" href="{{ url_for('index') }}">Zpět na hlavní rozcestník</a>
+        </div>
+    </div>
+{% endblock %}
